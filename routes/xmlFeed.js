@@ -1,89 +1,42 @@
-const express = require("express");
-const router = express.Router();
-const moment = require("moment");
-const rdb = require("../lib/rethink");
+const express     = require("express");
+const moment      = require("moment");
+const rdb         = require("../lib/rethink");
+const Memcached   = require('memcached');
+const utils       = require('../utilities/feedUtils');
+const router      = express.Router();
+const memcached   = new Memcached('localhost:11211', { maxValue: 2097152 });
 
-const Memcached = require('memcached');
-const memcached = new Memcached('localhost:11211', {
-  maxValue: 2097152
-});
+const get = (req, res) => {
+  let pod = req.params.pod;
 
-module.exports = router;
+  rdb
+    .get("xmlfeeds", pod)
+    .then(response => response ? res.send(response.data) : res.sendStatus(204))
+    .catch(err => res.send(err));
+}
 
-router.route("/").get((req, res) => {
-  rdb.get("xmlfeeds", "moto60").then(response => {
-    if (response) res.send(response);
-    else res.sendStatus(204);
-    // res.send('Show feed sending');
-  });
-});
+const post = (req, res) => {
+  let show = req.params.pod;
+  let data = req.body;
+  if (!data.inactiveEpisodes) data.inactiveEpisodes = [];
 
-router
-  .route("/:pod")
-  .get((req, res) => {
-    let pod = req.params.pod;
-
-    rdb
-      .get("xmlfeeds", pod)
-      .then(response => {
-        if (response) res.send(response.data);
-        else res.sendStatus(204);
-      })
-      .catch(err => {
-        res.send(err);
-      });
-  })
-  .post((req, res) => {
-    let show = req.params.pod;
-    let data = req.body;
-
-    if (!data.inactiveEpisodes) data.inactiveEpisodes = [];
-    let i = data.episodes.length;
-
-    // while (i--) {
-    //   let episode = data.episodes[i];
-    //   console.log(episode, 'EPISODE');
-
-    //   if (episode.inactive) {
-    //     data.inactiveEpisodes.push(episode);
-    //     data.episodes.splice(i, 1);
-    //     i--;
-    //   }
-    // }
-
-    // data.episodes.forEach(episode => {
-    //   if (episode.inactive) 
-    // })
-
-    rdb
-      .insert("xmlfeeds", {
-        id: show,
-        data: data
-      }, "replace")
-      .then(resp1 => {
-        if (!resp1.errors) {
-          rdb
-            .insert("xmlfeedshistory", {
-              id: `${show}_${moment().format("YYMMDD_HHmmss")}`,
-              data: data
-            })
-            .then(resp2 => {
-              if (resp2.inserted === 1) {
-                let apiPodFeed = formatFeedJson(data, show);
-                rdb.insert("feeds", apiPodFeed, "replace").then(resp3 => {
-                  //   console.log(resp3, "resp3");
+  rdb
+    .insert("xmlfeeds", { id: show, data: data }, "replace")
+    .then(resp1 => {
+      if (!resp1.errors) {
+        rdb
+          .insert("xmlfeedshistory", { id: `${show}_${moment().format("YYMMDD_HHmmss")}`, data: data })
+          .then(resp2 => {
+            if (resp2.inserted === 1) {
+              let apiPodFeed = utils.formatFeedJson(data, show);
+              rdb
+                .insert("feeds", apiPodFeed, "replace")
+                .then(resp3 => {
                   memcached.del(show);
                   memcached.set(show, apiPodFeed, 300);
-
-                  if (!resp3.errors) {
-                    res.sendStatus(200);
-                  } else {
-                    res.sendStatus(400);
-                  }
+                  !resp3.errors ? res.sendStatus(200) : res.sendStatus(400);
                 });
-                // res.sendStatus(200);
               } else {
-                // console.log(resp1, "resp1 error");
                 res.sendStatus(409);
               }
             });
@@ -91,10 +44,20 @@ router
           res.sendStatus(409);
         }
       })
-      .catch(err => {
-        res.send(err);
-      });
-  });
+    .catch(err => {
+      res.send(err);
+    });
+}
+
+router
+  .route('/:pod')
+  .get(get)
+  .post(post);
+
+//////////
+
+module.exports = router;
+
 
 /*
  * HELPERS
