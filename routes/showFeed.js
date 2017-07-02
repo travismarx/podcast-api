@@ -9,6 +9,8 @@ const get = (req, res) => {
   const pluckval  = req.params.pluckval;
   const limit     = parseInt(req.query.limit);
 
+  console.log('Getting show feed');
+
   memcached.get(pod, (err, data) => {
     if (data) res.send(data);
     else 
@@ -21,7 +23,7 @@ const get = (req, res) => {
           .get("feeds", pod)
           .then(response => {
             if (response) {
-              memcached.del(pod);
+              // memcached.del(pod);
               memcached.set(pod, response, 300, (err, result) => {})
               res.send(response);
             } else {
@@ -35,8 +37,8 @@ const get = (req, res) => {
 }
 
 router
-  .route('/:pod/pluckval?')
-  .get(get)
+  .route('/:pod/:pluckval?')
+  .get(get);
 
 //////////
 
