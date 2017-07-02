@@ -5,25 +5,34 @@ const Memcached   = require('memcached');
 const utils       = require('../utilities/feedUtils');
 const router      = express.Router();
 const memcached   = new Memcached('localhost:11211', { maxValue: 2097152 });
+// const Redis       = require('redis');
+// const redis       = Redis.createClient();
+// const redis = require('../lib/redis');
 
 const get = (req, res) => {
   let pod = req.params.pod;
 
-  rdb
-    .get("xmlfeeds", pod)
-    .then(response => response ? res.send(response.data) : res.sendStatus(204))
-    .catch(err => res.send(err));
+  // redis.get(`xmlfeed::${pod}`, (err, data) => {
+    // if (data) res.send(JSON.parse(data));
+    // else
+      rdb
+        .get("xmlfeeds", pod)
+        .then(response => response ? res.send(response.data) : res.sendStatus(204))
+        .catch(err => res.send(err));
+      // })
 }
 
 const post = (req, res) => {
   let show = req.params.pod;
   let data = req.body;
   if (!data.inactiveEpisodes) data.inactiveEpisodes = [];
+  let xmlFeedObj = Object.assign({}, { id: show, data: data });
 
   rdb
-    .insert("xmlfeeds", { id: show, data: data }, "replace")
+    .insert("xmlfeeds", xmlFeedObj, "replace")
     .then(resp1 => {
       if (!resp1.errors) {
+        // redis.set(`xmlfeed::${show}`, JSON.stringify(xmlFeedObj.data));
         rdb
           .insert("xmlfeedshistory", { id: `${show}_${moment().format("YYMMDD_HHmmss")}`, data: data })
           .then(resp2 => {
@@ -32,8 +41,7 @@ const post = (req, res) => {
               rdb
                 .insert("feeds", apiPodFeed, "replace")
                 .then(resp3 => {
-                  memcached.del(show);
-                  memcached.set(show, apiPodFeed, 300);
+                  // redis.set(`showfeed::${show}`, JSON.stringify(apiPodFeed));        
                   !resp3.errors ? res.sendStatus(200) : res.sendStatus(400);
                 });
               } else {
@@ -57,7 +65,6 @@ router
 //////////
 
 module.exports = router;
-
 
 /*
  * HELPERS

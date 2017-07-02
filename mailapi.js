@@ -10,7 +10,10 @@ const unirest       = require('unirest');
 const app           = require("express")();
 const consts        = require('./constants/twilio')
 const server        = require("http").createServer(app);
-const sparkpostApi  = require('https://api.sparkpost.com/api/v1')
+const sparkpostApi  = 'https://api.sparkpost.com/api/v1';
+// const Redis         = require('redis');
+// const redis         = Redis.createClient();
+// const redis = require('./lib/redis');
 
 server.listen(42319);
 
@@ -18,15 +21,16 @@ app.use(logger("dev"));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json({ limit: "5mb" }));
 app.use(helmet());
+app.use(cors())
 app.use((err, req, res, next) => {
   res.status(err.status || 500);
   res.json({ err: err.message });
   next();
 });
 
-const get = (req, res) => {
-  const baseUrl =  `${sparkpostApi}/recipient-lists`
-  const url = req.params.id ? baseUrl + `/${req.params.id}?show_recipients=true` : baseUrl;
+const updateMailLists = (id) => {
+  const baseUrl = `${sparkpostApi}/recipient-lists`;
+  const url = baseUrl + `/${id}?show_recipients=true`;
 
   unirest
     .get(url)
@@ -34,9 +38,28 @@ const get = (req, res) => {
       'Content-Type': 'application/json',
       'Authorization': process.env.SPARKPOST_KEY
     })
-    .end(result => {
-      res.send(result);
-    });
+    .end(res => {
+      redis.set(`maillists::${id}`, JSON.stringify(res));
+    })
+}
+
+const get = (req, res) => {
+  const baseUrl =  `${sparkpostApi}/recipient-lists`
+  const url = req.params.id ? baseUrl + `/${req.params.id}?show_recipients=true` : baseUrl;
+  // redis.get('maillists', (err, data) => {
+    // if (data) return res.send(JSON.parse(data));
+    // else
+      unirest
+        .get(url)
+        .headers({
+          'Content-Type': 'application/json',
+          'Authorization': process.env.SPARKPOST_KEY
+        })
+        .end(result => {
+          // redis.set(`maillists::${req.params.id}`, JSON.stringify(result));
+          res.send(result);
+        });
+      // })
 }
 
 const put = () => {
@@ -53,6 +76,7 @@ const put = () => {
     })
     .send(req.body)
     .end(result => {
+
       res.send(result);
     })
 }

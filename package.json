@@ -18,6 +18,7 @@
     "morgan": "^1.8.2",
     "newrelic": "^1.40.0",
     "pmx": "^1.2.0",
+    "redis": "^2.7.1",
     "request": "^2.79.0",
     "rethinkdb": "^2.3.3",
     "socketio": "^1.0.0",

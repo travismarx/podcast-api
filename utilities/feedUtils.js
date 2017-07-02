@@ -1,5 +1,28 @@
 const moment = require("moment");
 
+const determineSortOrder = (pod) => {
+    switch (pod) {
+        case "pulpmx":
+        return 1;
+        case "steveshow":
+        return 2;
+        case "moto60":
+        return 3;
+        case "keefer":
+        return 4;
+        case "exclusives":
+        return 5;
+        case "classics3":
+        return 6;
+        case "classics2":
+        return 7;
+        case "classics1":
+        return 8;
+        case "hockey":
+        return 9;
+  }
+}
+
 const formatFeedJson = (data, show) => {
     let feedJson = {
         id: show,
@@ -8,7 +31,7 @@ const formatFeedJson = (data, show) => {
         description: data.description.textContent,
         image: data.image.url.textContent,
         lastModified: data.lastModified,
-        sortOrder: determineSort(show),
+        sortOrder: determineSortOrder(show),
         episodes: [],
     };
 
@@ -34,27 +57,6 @@ const formatFeedJson = (data, show) => {
   return feedJson;
 }
 
-const determineSortOrder = (pod) => {
-    switch (pod) {
-        case "pulpmx":
-        return 1;
-        case "steveshow":
-        return 2;
-        case "moto60":
-        return 3;
-        case "keefer":
-        return 4;
-        case "exclusives":
-        return 5;
-        case "classics3":
-        return 6;
-        case "classics2":
-        return 7;
-        case "classics1":
-        return 8;
-        case "hockey":
-        return 9;
-  }
-}
+
 
 module.exports = { formatFeedJson }
