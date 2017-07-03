@@ -11,8 +11,8 @@ const app           = require("express")();
 const consts        = require('./constants/twilio')
 const server        = require("http").createServer(app);
 const sparkpostApi  = 'https://api.sparkpost.com/api/v1';
-// const Redis         = require('redis');
-// const redis         = Redis.createClient();
+const Redis         = require('redis');
+const redis         = Redis.createClient();
 // const redis = require('./lib/redis');
 
 server.listen(42319);
@@ -44,11 +44,12 @@ const updateMailLists = (id) => {
 }
 
 const get = (req, res) => {
-  const baseUrl =  `${sparkpostApi}/recipient-lists`
+  const baseUrl =  `${sparkpostApi}/recipient-lists`;
   const url = req.params.id ? baseUrl + `/${req.params.id}?show_recipients=true` : baseUrl;
-  // redis.get('maillists', (err, data) => {
-    // if (data) return res.send(JSON.parse(data));
-    // else
+  const redisKey = req.params.id ? `maillists::${req.params.id}` : 'maillists';
+  redis.get(redisKey, (err, data) => {
+    if (data) return res.send(JSON.parse(data));
+    else
       unirest
         .get(url)
         .headers({
@@ -56,10 +57,10 @@ const get = (req, res) => {
           'Authorization': process.env.SPARKPOST_KEY
         })
         .end(result => {
-          // redis.set(`maillists::${req.params.id}`, JSON.stringify(result));
+          redis.set(redisKey, JSON.stringify(result));
           res.send(result);
         });
-      // })
+      })
 }
 
 const put = () => {
@@ -76,9 +77,9 @@ const put = () => {
     })
     .send(req.body)
     .end(result => {
-
+      updateMailLists(result.id)
       res.send(result);
-    })
+    });
 }
 
 const post = (req, res) => {
