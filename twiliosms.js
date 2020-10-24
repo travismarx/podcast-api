@@ -12,12 +12,12 @@ const r             = require("rethinkdb");
 const dbConfig      = require("./config/database");
 const unirest       = require("unirest");
 const consts        = require('./constants/twilio');
-const twilio        = require("twilio")(accountSid, authToken);
 const accountSid    = process.env.TWILIO_ACC_SID;
 const authToken     = process.env.TWILIO_AUTH_TOKEN;
 const sparkpostApi  = 'https://api.sparkpost.com/api/v1';
 const app           = require("express")();
 const server        = require("http").createServer(app);
+const twilio        = require("twilio")(accountSid, authToken);
 
 let newsletterStatus = 0;
 let newsletterLists;
